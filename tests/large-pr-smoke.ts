@@ -4,7 +4,7 @@ import { join } from "path";
 
 const repoRoot = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const cli = join(repoRoot, "packages/cli/src/cli.ts");
-const scanner = join(repoRoot, "packages/cli/bin/percentvibed-scan");
+const scanner = process.env.PERCENTVIBED_SCANNER ?? join(repoRoot, "packages/cli/bin/percentvibed-scan");
 const work = mkdtempSync(join(tmpdir(), "pv-large-pr-"));
 const home = join(work, "home");
 const repo = join(work, "repo");
