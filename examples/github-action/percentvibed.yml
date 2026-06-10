@@ -1,0 +1,33 @@
+name: PercentVibed
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  percentvibed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - id: percentvibed
+        run: bunx percentvibed report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: echo "PercentVibed share is ${{ steps.percentvibed.outputs.percent }}%"
+
+      - if: ${{ steps.percentvibed.outputs.percent == '100' }}
+        run: echo "Fully agent-assisted PR"
+
+      - if: ${{ fromJSON(steps.percentvibed.outputs.percent) >= 50 }}
+        run: echo "At least half agent-assisted"

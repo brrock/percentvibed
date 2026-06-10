@@ -1,0 +1,18 @@
+{
+  "name": "percentvibed-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun run --cwd packages/cli build",
+    "test": "bun tests/large-pr-smoke.ts",
+    "scan:build": "zig build -Doptimize=ReleaseSafe --prefix-exe-dir ../../packages/cli/bin --prefix ."
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

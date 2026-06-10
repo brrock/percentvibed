@@ -1,0 +1,15 @@
+{
+  "name": "percentvibed",
+  "version": "0.1.0",
+  "bin": {
+    "percentvibed": "./src/cli.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/cli.ts --target bun --outfile dist/percentvibed",
+    "typecheck": "tsc -p ../../tsconfig.json"
+  },
+  "dependencies": {
+    "@percentvibed/scanner": "0.1.0"
+  }
+}

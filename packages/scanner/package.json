@@ -1,0 +1,13 @@
+{
+  "name": "@percentvibed/scanner",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "percentvibed-scan": "./src/percentvibed-scan.ts"
+  },
+  "files": ["src"],
+  "optionalDependencies": {
+    "@percentvibed/scanner-darwin-arm64": "0.1.0",
+    "@percentvibed/scanner-linux-x64": "0.1.0"
+  }
+}

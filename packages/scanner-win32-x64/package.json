@@ -1,0 +1,11 @@
+{
+  "name": "@percentvibed/scanner-win32-x64",
+  "version": "0.1.0",
+  "description": "PercentVibed native scanner binary for win32 x64",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "bin": {
+    "percentvibed-scan": "./bin/percentvibed-scan.exe"
+  },
+  "files": ["bin/percentvibed-scan.exe", "README.md"]
+}
