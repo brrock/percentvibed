@@ -2,8 +2,13 @@
   "name": "@percentvibed/scanner",
   "version": "0.1.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brrock/percentvibed.git",
+    "directory": "packages/scanner"
+  },
   "bin": {
-    "percentvibed-scan": "./src/percentvibed-scan.ts"
+    "percentvibed-scan": "src/percentvibed-scan.ts"
   },
   "files": ["src"],
   "optionalDependencies": {
