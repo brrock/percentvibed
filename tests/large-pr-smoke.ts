@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -109,8 +109,35 @@ async function commitThree(): Promise<void> {
 function captureAndCommit(message: string, files: string[]): void {
   run("git", ["add", ...files], repo);
   run("bun", [cli, "capture"], repo, env);
+  assertCompactTransportBundle();
   run("git", ["add", ".percentvibed"], repo);
   run("git", ["commit", "-m", message], repo);
+}
+
+function assertCompactTransportBundle(): void {
+  const manifestPath = join(repo, ".percentvibed/v1/manifest.json");
+  const sessionsPath = join(repo, ".percentvibed/v1/sessions");
+  const patchesPath = join(repo, ".percentvibed/v1/patches");
+
+  if (!existsSync(manifestPath)) {
+    throw new Error("expected compact transport manifest to exist");
+  }
+
+  if (!existsSync(sessionsPath) || readdirSync(sessionsPath).length === 0) {
+    throw new Error("expected compact transport session metadata to exist");
+  }
+
+  if (existsSync(patchesPath)) {
+    throw new Error("expected compact transport to omit .percentvibed/v1/patches");
+  }
+
+  const sessionFiles = readdirSync(sessionsPath).filter((file) => file.endsWith(".json"));
+  for (const file of sessionFiles) {
+    const session = JSON.parse(readFileSync(join(sessionsPath, file), "utf8"));
+    if (!Array.isArray(session.fileStats)) {
+      throw new Error(`expected ${file} to include fileStats`);
+    }
+  }
 }
 
 async function cleanupLikeSuccessfulPush(): Promise<void> {

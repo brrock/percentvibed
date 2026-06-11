@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: "0.16.0"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck CLI
+        run: bun run --cwd packages/cli typecheck
+
+      - name: Build Linux x64 scanner for tests
+        run: |
+          set -euo pipefail
+          rm -rf packages/scanner-zig/zig-out packages/scanner-zig/.zig-cache
+          (cd packages/scanner-zig && zig build -Dtarget=x86_64-linux -Doptimize=ReleaseSafe)
+          mkdir -p packages/scanner-linux-x64/bin packages/cli/bin
+          cp packages/scanner-zig/zig-out/bin/percentvibed-scan packages/scanner-linux-x64/bin/percentvibed-scan
+          cp packages/scanner-zig/zig-out/bin/percentvibed-scan packages/cli/bin/percentvibed-scan
+          chmod +x packages/scanner-linux-x64/bin/percentvibed-scan packages/cli/bin/percentvibed-scan
+
+      - name: Build CLI
+        run: bun run --cwd packages/cli build
+
+      - name: Large PR smoke test
+        env:
+          PERCENTVIBED_SCANNER: ${{ github.workspace }}/packages/scanner-linux-x64/bin/percentvibed-scan
+        run: bun run test
