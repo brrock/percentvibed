@@ -1,6 +1,6 @@
 {
   "name": "percentvibed",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/brrock/percentvibed.git",
@@ -15,6 +15,6 @@
     "typecheck": "tsc -p ../../tsconfig.json"
   },
   "dependencies": {
-    "@percentvibed/scanner": "0.3.1"
+    "@percentvibed/scanner": "0.3.2"
   }
 }
