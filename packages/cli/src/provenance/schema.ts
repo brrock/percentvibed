@@ -24,6 +24,41 @@ export type NormalizedEditEvent = {
   patchHash?: string;
   stats?: { added: number; deleted: number };
 };
+export type CommandKind = "formatter" | "lint_fix" | "test" | "build" | "unknown";
+export type FormatterBridgeFileStat = {
+  file: string;
+  added: number;
+  deleted: number;
+  beforeHash?: string;
+  afterHash?: string;
+};
+export type CommandRecord = {
+  version: 1;
+  id: string;
+  source: "percentvibed_run";
+  sessionId: string;
+  startedAt: string;
+  endedAt: string;
+  command: string[];
+  commandText: string;
+  kind: CommandKind;
+  exitCode: number;
+  files: FormatterBridgeFileStat[];
+};
+export type FormatterBridgeEvent = {
+  source: "percentvibed_run";
+  commandId: string;
+  command: string;
+  kind: CommandKind;
+  file: string;
+  stats: { added: number; deleted: number };
+  startedAt: string;
+  endedAt: string;
+  exitCode: number;
+  confidence: number;
+  beforeHash?: string;
+  afterHash?: string;
+};
 export type PvConfig = {
   version: 1;
   policy: "warn" | "strict";

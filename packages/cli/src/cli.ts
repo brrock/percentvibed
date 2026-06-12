@@ -9,6 +9,7 @@ import { installHooks } from "./commands/install-hooks";
 import { push } from "./commands/push";
 import { report } from "./commands/report";
 import { restore } from "./commands/restore";
+import { run } from "./commands/run";
 import { start } from "./commands/start";
 import { updateComment } from "./github/comment";
 
@@ -39,6 +40,8 @@ async function dispatch(command?: string, subcommand?: string, rest: string[] = 
       return clean([subcommand, ...rest].filter(Boolean) as string[]);
     case "restore":
       return restore();
+    case "run":
+      return run([subcommand, ...rest].filter(Boolean) as string[]);
     case "report":
       return report([subcommand, ...rest].filter(Boolean) as string[]);
     case "doctor":
@@ -78,6 +81,7 @@ Commands:
   push [...git-push-args]
   clean --hide
   restore
+  run -- <formatter-or-lint-fix-command>
   report --base <ref> --format markdown [--out <file>]
   github update-comment --file <file>
   doctor

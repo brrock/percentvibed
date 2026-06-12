@@ -32,15 +32,13 @@ jobs:
           set -euo pipefail
           rm -rf packages/scanner-zig/zig-out packages/scanner-zig/.zig-cache
           (cd packages/scanner-zig && zig build -Dtarget=x86_64-linux -Doptimize=ReleaseSafe)
-          mkdir -p packages/scanner-linux-x64/bin packages/cli/bin
-          cp packages/scanner-zig/zig-out/bin/percentvibed-scan packages/scanner-linux-x64/bin/percentvibed-scan
-          cp packages/scanner-zig/zig-out/bin/percentvibed-scan packages/cli/bin/percentvibed-scan
-          chmod +x packages/scanner-linux-x64/bin/percentvibed-scan packages/cli/bin/percentvibed-scan
+          mkdir -p packages/scanner-linux-x64
+          cp packages/scanner-zig/zig-out/percentvibed_scanner.node packages/scanner-linux-x64/percentvibed_scanner.node
 
       - name: Build CLI
         run: bun run --cwd packages/cli build
 
       - name: Large PR smoke test
         env:
-          PERCENTVIBED_SCANNER: ${{ github.workspace }}/packages/scanner-linux-x64/bin/percentvibed-scan
+          PERCENTVIBED_SCANNER_NATIVE: ${{ github.workspace }}/packages/scanner-linux-x64/percentvibed_scanner.node
         run: bun run test

@@ -4,7 +4,7 @@ import { join } from "path";
 
 const repoRoot = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 const cli = join(repoRoot, "packages/cli/src/cli.ts");
-const scanner = process.env.PERCENTVIBED_SCANNER ?? join(repoRoot, "packages/cli/bin/percentvibed-scan");
+const scannerNative = process.env.PERCENTVIBED_SCANNER_NATIVE ?? join(repoRoot, "packages/scanner-zig/zig-out/percentvibed_scanner.node");
 const work = mkdtempSync(join(tmpdir(), "pv-large-pr-"));
 const home = join(work, "home");
 const repo = join(work, "repo");
@@ -16,7 +16,7 @@ mkdirSync(piSessions, { recursive: true });
 const env = {
   ...process.env,
   HOME: home,
-  PERCENTVIBED_SCANNER: scanner,
+  PERCENTVIBED_SCANNER_NATIVE: scannerNative,
 };
 
 run("git", ["init"], repo);
@@ -25,11 +25,21 @@ run("git", ["config", "user.name", "PercentVibed Smoke"], repo);
 
 mkdirSync(join(repo, "src"));
 mkdirSync(join(repo, "docs"));
+mkdirSync(join(repo, "scripts"));
 writeFileSync(join(repo, "src/a.ts"), "export const baseA = 0;\n");
 writeFileSync(join(repo, "src/b.ts"), "export const baseB = 0;\n");
 writeFileSync(join(repo, "src/c.ts"), "export const baseC = 0;\n");
 writeFileSync(join(repo, "docs/human.md"), "# Human docs\n");
-run("git", ["add", "src", "docs"], repo);
+writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { format: "bun scripts/format.ts" } }, null, 2)}\n`);
+writeFileSync(
+  join(repo, "scripts/format.ts"),
+  "import { appendFileSync } from \"fs\";\n" +
+    "const codeLines = Array.from({ length: 12 }, (_, index) => `export const format_bridge_${index + 1} = ${index + 1};\\n`).join(\"\");\n" +
+    "const docsLines = Array.from({ length: 6 }, (_, index) => `- formatted human docs ${index + 1}\\n`).join(\"\");\n" +
+    "appendFileSync(\"src/b.ts\", codeLines);\n" +
+    "appendFileSync(\"docs/human.md\", docsLines);\n",
+);
+run("git", ["add", "src", "docs", "scripts", "package.json"], repo);
 run("git", ["commit", "-m", "init"], repo);
 
 run("bun", [cli, "init"], repo, env);
@@ -49,14 +59,16 @@ await commitThree();
 const report = run("bun", [cli, "report", "--base", "HEAD~3", "--format", "markdown"], repo, env);
 console.log(report);
 
-assertIncludes(report, "Detected agent-assisted share:** 77%");
-assertIncludes(report, "| PR added lines | 155 |");
-assertIncludes(report, "| Detected agent-assisted added lines | 120 |");
+assertIncludes(report, "Detected agent-assisted share:** 76%");
+assertIncludes(report, "| PR added lines | 173 |");
+assertIncludes(report, "| Detected agent-assisted added lines | 132 |");
 assertIncludes(report, "| Captured sessions | 3 |");
 assertIncludes(report, "| Agent sessions detected | 3 |");
 assertIncludes(report, "| src/a.ts | 55 | 0 |");
-assertIncludes(report, "| src/b.ts | 40 | 0 |");
+assertIncludes(report, "| src/b.ts | 52 | 0 |");
 assertIncludes(report, "| src/c.ts | 25 | 0 |");
+assertNotIncludes(report, "| docs/human.md |");
+assertNotIncludes(report, "Session mechanical");
 
 console.log(`large PR smoke passed in ${repo}`);
 
@@ -97,6 +109,7 @@ async function commitThree(): Promise<void> {
   appendGeneratedLines("src/c.ts", "agentC_commit3", 25);
   appendGeneratedLines("src/b.ts", "agentB_commit3", 10);
   appendGeneratedLines("docs/human.md", "human docs commit3", 20);
+  run("bun", [cli, "run", "--", "bun", "run", "format"], repo, env);
 
   writeLargePiSession("three", startedAt, [
     editPatch("src/c.ts", "agentC_commit3", 25),
@@ -263,5 +276,11 @@ function run(command: string, args: string[], cwd: string, commandEnv = env): st
 function assertIncludes(value: string, expected: string): void {
   if (!value.includes(expected)) {
     throw new Error(`expected report to include ${JSON.stringify(expected)}`);
+  }
+}
+
+function assertNotIncludes(value: string, expected: string): void {
+  if (value.includes(expected)) {
+    throw new Error(`expected report not to include ${JSON.stringify(expected)}`);
   }
 }

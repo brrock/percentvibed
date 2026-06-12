@@ -2,12 +2,18 @@ name: Release npm packages
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "npm package version to publish (for example, 0.2.0 or v0.2.0)"
+        required: true
+        type: string
   push:
     tags:
       - "v*.*.*"
+      - "*.*.*"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -24,6 +30,87 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Determine npm package version
+        id: release_version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            raw_version="${GITHUB_REF_NAME}"
+          else
+            raw_version="${INPUT_VERSION}"
+          fi
+
+          version="${raw_version#v}"
+          if [[ -z "${version}" ]]; then
+            echo "Release version is required for manual dispatch." >&2
+            exit 1
+          fi
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid npm package version: ${version}" >&2
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update package versions
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const version = process.env.RELEASE_VERSION;
+          const publishedPackageFiles = [
+            "packages/scanner-darwin-arm64/package.json",
+            "packages/scanner-linux-x64/package.json",
+            "packages/scanner/package.json",
+            "packages/cli/package.json",
+          ];
+          const scannerNativePackageNames = [
+            "@percentvibed/scanner-darwin-arm64",
+            "@percentvibed/scanner-linux-x64",
+          ];
+
+          function escapeRegExp(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          }
+
+          function setStringProperty(text, propertyName, value) {
+            const pattern = new RegExp(`("${escapeRegExp(propertyName)}"\\s*:\\s*)"[^"]*"`);
+            if (!pattern.test(text)) {
+              throw new Error(`Could not find ${propertyName}`);
+            }
+            return text.replace(pattern, (_match, prefix) => `${prefix}"${value}"`);
+          }
+
+          for (const file of publishedPackageFiles) {
+            let text = readFileSync(file, "utf8");
+            text = setStringProperty(text, "version", version);
+
+            if (file === "packages/cli/package.json") {
+              text = setStringProperty(text, "@percentvibed/scanner", version);
+            }
+
+            if (file === "packages/scanner/package.json") {
+              for (const packageName of scannerNativePackageNames) {
+                text = setStringProperty(text, packageName, version);
+              }
+            }
+
+            JSON.parse(text);
+            writeFileSync(file, text);
+          }
+          NODE
+
+          bun install --lockfile-only
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -43,27 +130,55 @@ jobs:
           build_scanner() {
             local target="$1"
             local package_dir="$2"
-            local exe_name="$3"
 
-            echo "Building scanner for ${target} -> ${package_dir}/bin/${exe_name}"
+            echo "Building scanner for ${target} -> ${package_dir}/percentvibed_scanner.node"
             rm -rf packages/scanner-zig/zig-out packages/scanner-zig/.zig-cache
             (cd packages/scanner-zig && zig build -Dtarget="${target}" -Doptimize=ReleaseSafe)
-            mkdir -p "${package_dir}/bin"
-            cp "packages/scanner-zig/zig-out/bin/${exe_name}" "${package_dir}/bin/${exe_name}"
-            chmod +x "${package_dir}/bin/${exe_name}"
+            mkdir -p "${package_dir}"
+            cp "packages/scanner-zig/zig-out/percentvibed_scanner.node" "${package_dir}/percentvibed_scanner.node"
           }
 
           # Publish only the packages that have npm trusted publishing configured today.
-          build_scanner "aarch64-macos" "packages/scanner-darwin-arm64" "percentvibed-scan"
-          build_scanner "x86_64-linux"  "packages/scanner-linux-x64"    "percentvibed-scan"
+          build_scanner "aarch64-macos" "packages/scanner-darwin-arm64"
+          build_scanner "x86_64-linux"  "packages/scanner-linux-x64"
 
       - name: Build CLI
         run: bun run --cwd packages/cli build
 
       - name: Smoke test with built linux scanner
         env:
-          PERCENTVIBED_SCANNER: ${{ github.workspace }}/packages/scanner-linux-x64/bin/percentvibed-scan
+          PERCENTVIBED_SCANNER_NATIVE: ${{ github.workspace }}/packages/scanner-linux-x64/percentvibed_scanner.node
         run: bun run test
+
+      - name: Commit package versions
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          git add \
+            bun.lock \
+            packages/cli/package.json \
+            packages/scanner/package.json \
+            packages/scanner-darwin-arm64/package.json \
+            packages/scanner-linux-x64/package.json
+
+          if git diff --cached --quiet; then
+            echo "Package versions are already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "versioon pkgs"
+
+          target_branch="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            target_branch="${DEFAULT_BRANCH}"
+          fi
+
+          git push origin "HEAD:refs/heads/${target_branch}"
 
       - name: Pack packages
         shell: bash

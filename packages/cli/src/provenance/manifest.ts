@@ -1,5 +1,5 @@
 import { filesFromPatch, patchStats, stagedNumstat } from "../git/diff";
-import type { ActiveSession, NormalizedEditEvent } from "./schema";
+import type { ActiveSession, CommandRecord, FormatterBridgeEvent, NormalizedEditEvent } from "./schema";
 
 type ManifestSession = {
   id: string;
@@ -19,6 +19,8 @@ export async function writeBundle(
   patch: string,
   events: NormalizedEditEvent[],
   agents: string[],
+  formatterBridgeEvents: FormatterBridgeEvent[] = [],
+  commands: CommandRecord[] = [],
 ): Promise<void> {
   const dir = `${root}/.percentvibed/v1`;
   const id = await uniqueSessionId(active.id, root);
@@ -47,7 +49,21 @@ export async function writeBundle(
           agents: [...new Set(agents)],
           confidence,
         },
+        commandSignals: {
+          commandsSeen: commands.map((command) => ({
+            id: command.id,
+            source: command.source,
+            command: command.commandText,
+            kind: command.kind,
+            exitCode: command.exitCode,
+            filesChanged: command.files.length,
+            startedAt: command.startedAt,
+            endedAt: command.endedAt,
+          })),
+          formatterBridgeCommands: commands.filter((command) => command.kind === "formatter" || command.kind === "lint_fix").length,
+        },
         editEvents: events,
+        formatterBridgeEvents,
         redacted: true,
       },
       null,

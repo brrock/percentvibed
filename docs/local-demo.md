@@ -31,7 +31,7 @@ Ask your coding agent to edit the file from inside `/tmp/pv-demo`:
 Edit src/calc.ts. Add an exported multiply(a: number, b: number): number function. Do not modify anything else.
 ```
 
-Then capture and preview:
+Then capture and preview. If your agent runs a formatter or lint fixer, wrap it first with `percentvibed run -- <command>` so AI attribution is preserved for files the agent edited.
 
 ```bash
 git add src/calc.ts
@@ -54,6 +54,6 @@ jq . .percentvibed/v1/sessions/*.json
 Common reasons for 0%:
 
 - the agent edited before `percentvibed start`
-- the scanner binary is missing
+- the native scanner addon is missing
 - the agent used an unsupported edit mechanism
 - the changed file path did not match the staged diff

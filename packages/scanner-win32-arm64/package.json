@@ -1,16 +1,21 @@
 {
   "name": "@percentvibed/scanner-win32-arm64",
   "version": "0.1.0",
-  "description": "PercentVibed native scanner binary for win32 arm64",
+  "description": "PercentVibed native scanner N-API addon for win32 arm64",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/brrock/percentvibed.git",
     "directory": "packages/scanner-win32-arm64"
   },
-  "os": ["win32"],
-  "cpu": ["arm64"],
-  "bin": {
-    "percentvibed-scan": "bin/percentvibed-scan.exe"
-  },
-  "files": ["bin/percentvibed-scan.exe", "README.md"]
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "percentvibed_scanner.node",
+    "README.md"
+  ],
+  "main": "percentvibed_scanner.node"
 }

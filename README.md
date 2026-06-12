@@ -15,7 +15,7 @@ It uses:
 - local agent session stores as supporting evidence
 - compact `.percentvibed` metadata for temporary PR transport
 
-It does **not** count a change as agent-assisted just because someone ran `percentvibed start` or `percentvibed capture`. The scanner must find matching agent edit evidence for the changed files.
+It does **not** count a change as agent-assisted just because someone ran `percentvibed start` or `percentvibed capture`. The scanner must find matching agent edit evidence for the changed files. Formatter/lint-fix detection only preserves attribution for files that already have matching agent edit evidence; formatter-only changes do not count.
 
 ## Step-by-step setup in a repository
 
@@ -60,9 +60,13 @@ Before making code changes, run:
 percentvibed start
 ```
 
-After editing, stage only the intended code changes:
+After editing, run formatters/auto-fixers through PercentVibed when needed, then stage only the intended code changes:
 
 ```bash
+# when applicable:
+percentvibed run -- bun run format
+percentvibed run -- bun run lint:fix
+
 git add <changed-files>
 percentvibed capture
 git add .percentvibed
@@ -87,7 +91,7 @@ Add a shorter note to `CONTRIBUTING.md` or your project README:
 ```md
 ## AI-assisted changes
 
-For agent-assisted changes, run `percentvibed start`, make the changes, stage intended files, run `percentvibed capture`, commit `.percentvibed/` with the code, and push with `percentvibed push`.
+For agent-assisted changes, run `percentvibed start`, make the changes, use `percentvibed run -- <command>` for formatters or lint fixes, stage intended files, run `percentvibed capture`, commit `.percentvibed/` with the code, and push with `percentvibed push`.
 
 Human-only commits can use normal git commands.
 ```
@@ -119,6 +123,10 @@ percentvibed start
 
 # edit with your agent
 
+# If the agent runs formatters or auto-fixers, wrap them so AI attribution is preserved:
+percentvibed run -- bun run format
+percentvibed run -- bun run lint:fix
+
 git add <changed-files>
 percentvibed capture
 git add .percentvibed
@@ -139,6 +147,7 @@ git push
 ```txt
 .git/percentvibed/
   active-session.json
+  commands/<command-id>.json
   debug.log
   local private state
   never committed
@@ -272,14 +281,28 @@ percentvibed report --local --base HEAD~3
 | `percentvibed push [...git-push-args]` | run managed `git push`, then hide local `.percentvibed` on success |
 | `percentvibed clean --hide` | hide tracked `.percentvibed` locally with skip-worktree |
 | `percentvibed restore` | undo local skip-worktree hiding and restore `.percentvibed` |
+| `percentvibed run -- <command>` | run a formatter/lint fixer and preserve AI attribution for agent-edited files |
 | `percentvibed report` | GitHub report/update mode in Actions; local preview outside Actions |
 | `percentvibed report --local` | force local preview and never call GitHub |
 | `percentvibed doctor` | print diagnostics and actionable fixes |
 | `percentvibed detectors inspect` | safely summarize local detector/session formats |
 
+## Formatter and lint-fix handling
+
+When an agent runs a formatter or auto-fixer, wrap the command:
+
+```bash
+percentvibed run -- bun run format
+percentvibed run -- bun run lint:fix
+```
+
+`percentvibed run` snapshots the working tree before/after the command and records compact per-file line stats and hashes in local `.git/percentvibed` state. During reporting, these records are used only as a bridge for files that already have matching agent edit evidence. Formatter-only changes to unrelated human-authored files do not count as AI-generated.
+
+Supported formatter/lint-fix command detection includes common `format`, `fmt`, `lint:fix`, `eslint --fix`, `prettier --write`, `biome check --write`, `ruff --fix`, `black`, `gofmt -w`, `cargo fmt`, and similar commands.
+
 ## Scanner
 
-The Zig scanner is required for capture. It scans local session stores modified after `percentvibed start`, extracts normalized edit evidence, and returns sanitized JSON.
+The native Zig N-API scanner addon is required for capture. It scans local session stores modified after `percentvibed start`, extracts normalized edit evidence, and returns sanitized JSON.
 
 Supported targets in v1:
 

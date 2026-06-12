@@ -12,8 +12,8 @@
   "type": "module",
   "scripts": {
     "build": "bun run --cwd packages/cli build",
-    "test": "bun tests/large-pr-smoke.ts",
-    "scan:build": "zig build -Doptimize=ReleaseSafe --prefix-exe-dir ../../packages/cli/bin --prefix ."
+    "test": "bun tests/scanner-fixtures-smoke.ts && bun tests/large-pr-smoke.ts",
+    "scan:build": "cd packages/scanner-zig && zig build -Doptimize=ReleaseSafe"
   },
   "devDependencies": {
     "@types/bun": "latest",

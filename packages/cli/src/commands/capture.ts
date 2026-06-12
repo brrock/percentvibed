@@ -2,6 +2,7 @@ import { stagedDiff, filesFromPatch } from "../git/diff";
 import { repoRoot } from "../git/repo";
 import { logDebug } from "../provenance/log";
 import { writeBundle } from "../provenance/manifest";
+import { readFormatterBridgeProvenance } from "../provenance/formatter-bridge";
 import { findSecretHits, unsafePaths } from "../provenance/redact";
 import { prepareTransportForCapture } from "../provenance/transport";
 import type { ActiveSession, NormalizedEditEvent } from "../provenance/schema";
@@ -34,14 +35,14 @@ export async function capture(args: string[]): Promise<void> {
 
   await prepareTransportForCapture(root);
 
-  logDebug(root, "scanner:zig:start", {
+  logDebug(root, "scanner:native:start", {
     since: activeSession.startedAt,
     stagedFiles: stagedFiles.length,
   });
 
   const zigResult = await runZigScanner(root, activeSession.startedAt);
 
-  logDebug(root, "scanner:zig:done", {
+  logDebug(root, "scanner:native:done", {
     events: zigResult.events.length,
     agents: zigResult.agents.join(","),
   });
@@ -58,9 +59,12 @@ export async function capture(args: string[]): Promise<void> {
     .slice(0, 500);
 
   const agents = [...new Set(editEvents.map((event) => event.agent))];
+  const formatterBridge = await readFormatterBridgeProvenance(root, activeSession.startedAt, stagedFiles);
 
   logDebug(root, "capture:matched-events", {
     matchedEvents: editEvents.length,
+    formatterBridgeEvents: formatterBridge.events.length,
+    commandsSeen: formatterBridge.commands.length,
     agents: agents.join(","),
   });
 
@@ -70,15 +74,18 @@ export async function capture(args: string[]): Promise<void> {
     patch,
     editEvents,
     agents.length > 0 ? agents : ["unknown"],
+    formatterBridge.events,
+    formatterBridge.commands,
   );
 
   const evidenceLine = editEvents.length === 0
-    ? "No matching agent edit evidence was found; this capture will not count as agent-assisted.\n"
-    : `Found ${editEvents.length} matching agent edit event(s).\n`;
+    ? "No matching agent edit evidence was found; formatter/lint-fix records alone will not count as agent-assisted.\n"
+    : `Found ${editEvents.length} matching agent edit event(s). Formatter/lint-fix bridge event(s): ${formatterBridge.events.length}.\n`;
 
   logDebug(root, "capture:done", {
     files: stagedFiles.length,
     matchedEvents: editEvents.length,
+    formatterBridgeEvents: formatterBridge.events.length,
   });
 
   console.log(

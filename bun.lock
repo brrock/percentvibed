@@ -33,44 +33,26 @@
     "packages/scanner-darwin-arm64": {
       "name": "@percentvibed/scanner-darwin-arm64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan",
-      },
     },
     "packages/scanner-darwin-x64": {
       "name": "@percentvibed/scanner-darwin-x64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan",
-      },
     },
     "packages/scanner-linux-arm64": {
       "name": "@percentvibed/scanner-linux-arm64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan",
-      },
     },
     "packages/scanner-linux-x64": {
       "name": "@percentvibed/scanner-linux-x64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan",
-      },
     },
     "packages/scanner-win32-arm64": {
       "name": "@percentvibed/scanner-win32-arm64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan.exe",
-      },
     },
     "packages/scanner-win32-x64": {
       "name": "@percentvibed/scanner-win32-x64",
       "version": "0.1.0",
-      "bin": {
-        "percentvibed-scan": "./bin/percentvibed-scan.exe",
-      },
     },
   },
   "packages": {

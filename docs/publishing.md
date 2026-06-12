@@ -8,8 +8,8 @@ For now, CI only builds and publishes:
 |---|---|
 | `percentvibed` | Main Bun/TypeScript CLI |
 | `@percentvibed/scanner` | Required scanner wrapper package |
-| `@percentvibed/scanner-darwin-arm64` | macOS Apple Silicon scanner binary |
-| `@percentvibed/scanner-linux-x64` | Linux x64 scanner binary |
+| `@percentvibed/scanner-darwin-arm64` | macOS Apple Silicon scanner N-API addon |
+| `@percentvibed/scanner-linux-x64` | Linux x64 scanner N-API addon |
 
 Future native packages exist in the repo but are not built/published yet:
 
@@ -30,7 +30,7 @@ The release workflow is:
 .github/workflows/release-npm.yml
 ```
 
-It runs on tags matching `v*.*.*` and by manual dispatch.
+It runs on semver tags with or without a `v` prefix (for example `0.1.0` or `v0.1.0`) and by manual dispatch.
 
 It does the following on Linux:
 
@@ -39,7 +39,7 @@ It does the following on Linux:
 3. cross-compiles the Zig scanner for currently configured packages:
    - macOS ARM64
    - Linux x64
-4. copies each binary into the matching native package
+4. copies each `.node` addon into the matching native package
 5. builds the CLI
 6. runs the large PR smoke test with the built Linux x64 scanner
 7. packs publishable npm packages as artifacts
@@ -49,7 +49,7 @@ The workflow uses:
 
 ```yaml
 permissions:
-  contents: read
+  contents: write
   id-token: write
 ```
 
@@ -110,9 +110,7 @@ For each new platform package:
 
    ```bash
    bun run --cwd packages/cli typecheck
-   cd packages/scanner-zig && zig build
-   cd ../..
-   cp packages/scanner-zig/zig-out/bin/percentvibed-scan packages/cli/bin/percentvibed-scan
+   bun run scan:build
    bun run test
    ```
 
@@ -120,8 +118,8 @@ For each new platform package:
 4. Tag the release:
 
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
+   git tag 0.1.0
+   git push origin 0.1.0
    ```
 
 5. The GitHub workflow builds, packs, smoke tests, uploads tarballs, and publishes with provenance.

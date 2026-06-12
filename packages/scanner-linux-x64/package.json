@@ -1,16 +1,21 @@
 {
   "name": "@percentvibed/scanner-linux-x64",
   "version": "0.1.0",
-  "description": "PercentVibed native scanner binary for linux x64",
+  "description": "PercentVibed native scanner N-API addon for linux x64",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/brrock/percentvibed.git",
     "directory": "packages/scanner-linux-x64"
   },
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "bin": {
-    "percentvibed-scan": "bin/percentvibed-scan"
-  },
-  "files": ["bin/percentvibed-scan", "README.md"]
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "percentvibed_scanner.node",
+    "README.md"
+  ],
+  "main": "percentvibed_scanner.node"
 }

@@ -2,11 +2,13 @@ import { appendFileSync } from "fs";
 import { diffNumstat, patchStats } from "../git/diff";
 import { git, repoRoot } from "../git/repo";
 
-type CapturedFile = {
+type LineStat = {
   file: string;
   added: number;
   deleted: number;
 };
+
+type CapturedFile = LineStat;
 
 type CapturedSummary = {
   added: number;
@@ -78,39 +80,27 @@ async function readCapturedSummary(root: string, base: string, prFiles: string[]
 
     const metadata = bundle.metadata;
     const hasAgentEvidence = sessionHasAgentEvidence(metadata);
+    const formatterBridgeStats = formatterBridgeStatsFromMetadata(metadata);
+
     detectedAgentSessions += metadata?.agentSignals?.detectedSessions ?? 0;
 
     if (!hasAgentEvidence) {
       warnings.push(
         `Session ${bundle.id} captured a diff but has no matching agent edit evidence, so it is not counted as agent-assisted.`,
       );
-    }
-
-    const stats = { files: bundle.fileStats };
-
-    if (!hasAgentEvidence) continue;
-
-    const eventStats = agentStatsFromMetadata(metadata);
-    if (eventStats.length > 0) {
-      addBoundedEventStats(byFile, eventStats, stats.files, prFileSet, warnings);
       continue;
     }
 
-    warnings.push(
-      `Session ${bundle.id} has agent evidence but no per-event line stats; falling back to whole-file attribution.`,
-    );
+    let directStats = agentStatsFromMetadata(metadata);
 
-    for (const file of stats.files) {
-      if (!prFileSet.has(file.file)) {
-        warnings.push(`Captured file ${file.file} is not present in the current PR diff.`);
-        continue;
-      }
-
-      const current = byFile.get(file.file) ?? { file: file.file, added: 0, deleted: 0 };
-      current.added += file.added;
-      current.deleted += file.deleted;
-      byFile.set(file.file, current);
+    if (directStats.length === 0) {
+      warnings.push(
+        `Session ${bundle.id} has agent evidence but no per-event line stats; falling back to whole-file attribution.`,
+      );
+      directStats = bundle.fileStats;
     }
+
+    addBoundedBundleStats(byFile, directStats, formatterBridgeStats, bundle.fileStats, prFileSet, warnings);
   }
 
   const files = [...byFile.values()].sort((a, b) => a.file.localeCompare(b.file));
@@ -128,7 +118,7 @@ async function readCapturedSummary(root: string, base: string, prFiles: string[]
 type Bundle = {
   id: string;
   metadata: any;
-  fileStats: CapturedFile[];
+  fileStats: LineStat[];
 };
 
 async function readBundles(root: string, base: string): Promise<Bundle[]> {
@@ -204,7 +194,7 @@ function readCommitBundles(root: string, commit: string): Bundle[] {
   }
 }
 
-function fileStatsFromMetadata(metadata: any, legacyPatch?: string): CapturedFile[] {
+function fileStatsFromMetadata(metadata: any, legacyPatch?: string): LineStat[] {
   if (Array.isArray(metadata?.fileStats)) {
     return metadata.fileStats.map((file: any) => ({
       file: String(file.file),
@@ -242,9 +232,9 @@ function sessionHasAgentEvidence(metadata: any | undefined): boolean {
   return attributedEvents.length > 0 || (detectedSessions > 0 && confidence > 0);
 }
 
-function agentStatsFromMetadata(metadata: any | undefined): CapturedFile[] {
+function agentStatsFromMetadata(metadata: any | undefined): LineStat[] {
   const editEvents = Array.isArray(metadata?.editEvents) ? metadata.editEvents : [];
-  const byFile = new Map<string, CapturedFile>();
+  const byFile = new Map<string, LineStat>();
 
   for (const event of editEvents) {
     if (!event.file || event.agent === "unknown" || !event.stats) continue;
@@ -258,28 +248,55 @@ function agentStatsFromMetadata(metadata: any | undefined): CapturedFile[] {
   return [...byFile.values()];
 }
 
-function addBoundedEventStats(
+function formatterBridgeStatsFromMetadata(metadata: any | undefined): LineStat[] {
+  const formatterBridgeEvents = Array.isArray(metadata?.formatterBridgeEvents)
+    ? metadata.formatterBridgeEvents
+    : Array.isArray(metadata?.mechanicalEvents)
+      ? metadata.mechanicalEvents
+      : [];
+  const byFile = new Map<string, LineStat>();
+
+  for (const event of formatterBridgeEvents) {
+    if (!event.file || !event.stats) continue;
+    if (event.kind !== "formatter" && event.kind !== "lint_fix") continue;
+
+    const current = byFile.get(event.file) ?? { file: event.file, added: 0, deleted: 0 };
+    current.added += Math.max(0, Number(event.stats.added) || 0);
+    current.deleted += Math.max(0, Number(event.stats.deleted) || 0);
+    byFile.set(event.file, current);
+  }
+
+  return [...byFile.values()];
+}
+
+function addBoundedBundleStats(
   byFile: Map<string, CapturedFile>,
-  eventStats: CapturedFile[],
-  capturedPatchStats: CapturedFile[],
+  directStats: LineStat[],
+  formatterBridgeStats: LineStat[],
+  capturedPatchStats: LineStat[],
   prFileSet: Set<string>,
   warnings: string[],
 ): void {
   const bounds = new Map(capturedPatchStats.map((file) => [file.file, file]));
+  const directByFile = new Map(directStats.map((file) => [file.file, file]));
+  const bridgeByFile = new Map(formatterBridgeStats.map((file) => [file.file, file]));
 
-  for (const eventFile of eventStats) {
-    if (!prFileSet.has(eventFile.file)) {
-      warnings.push(`Agent event file ${eventFile.file} is not present in the current PR diff.`);
+  for (const fileName of directByFile.keys()) {
+    if (!prFileSet.has(fileName)) {
+      warnings.push(`Captured evidence file ${fileName} is not present in the current PR diff.`);
       continue;
     }
 
-    const bound = bounds.get(eventFile.file);
+    const bound = bounds.get(fileName);
     if (!bound) continue;
 
-    const current = byFile.get(eventFile.file) ?? { file: eventFile.file, added: 0, deleted: 0 };
-    current.added += Math.min(eventFile.added, bound.added);
-    current.deleted += Math.min(eventFile.deleted, bound.deleted);
-    byFile.set(eventFile.file, current);
+    const direct = directByFile.get(fileName) ?? { file: fileName, added: 0, deleted: 0 };
+    const bridge = bridgeByFile.get(fileName) ?? { file: fileName, added: 0, deleted: 0 };
+    const current = byFile.get(fileName) ?? { file: fileName, added: 0, deleted: 0 };
+
+    current.added += Math.min(direct.added + bridge.added, bound.added);
+    current.deleted += Math.min(direct.deleted + bridge.deleted, bound.deleted);
+    byFile.set(fileName, current);
   }
 }
 

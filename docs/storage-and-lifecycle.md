@@ -7,12 +7,15 @@ PercentVibed uses two storage areas with different purposes.
 ```txt
 .git/percentvibed/
   active-session.json
+  commands/<command-id>.json
   debug.log
 ```
 
 This directory is local-only git internals. It is never committed.
 
 `active-session.json` records the session id, start time, branch, and base commit. `capture` passes the start time to the scanner so only fresh agent sessions are considered.
+
+`commands/` stores local `percentvibed run` command records with sanitized command text, per-file line stats, and content hashes. These records are private local state until `capture` writes compact matching evidence into `.percentvibed/`; formatter/lint-fix records only contribute to files that also have agent edit evidence.
 
 `debug.log` records safe operational diagnostics such as scanner start/done, matched event counts, and capture completion. It must not contain prompts, raw logs, secrets, or full diffs.
 
@@ -36,6 +39,8 @@ The transport bundle contains compact reporting data only:
 - file-by-file changed line stats
 - normalized agent edit events
 - event-level line stats when available
+- formatter/lint-fix command summaries from `percentvibed run`
+- compact formatter/lint-fix per-file stats and hashes used only to preserve attribution for agent-edited files
 - hashed evidence references
 
 It does not contain raw prompts, raw logs, raw local paths, secrets, or full patch files.
@@ -47,6 +52,10 @@ percentvibed start
 # writes .git/percentvibed/active-session.json
 
 # edit with an agent
+
+# optionally preserve AI attribution through formatter/lint-fix output
+percentvibed run -- bun run format
+percentvibed run -- bun run lint:fix
 
 git add <changed-files>
 percentvibed capture

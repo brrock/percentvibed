@@ -1,3 +1,4 @@
+import { nativeAddonPath } from "@percentvibed/scanner";
 import { hasHook } from "../git/hooks";
 import { repoRoot } from "../git/repo";
 import { hiddenPercentFiles } from "../git/skip-worktree";
@@ -65,8 +66,9 @@ async function printCheck(check: Check): Promise<void> {
 }
 
 async function printScannerCheck(): Promise<void> {
-  const result = await Bun.$`which percentvibed-scan`.quiet().nothrow();
-  const available = result.exitCode === 0;
-
-  console.log(`${available ? "✓" : "✗"} Zig scanner binary ${available ? "available" : "missing (capture requires it)"}`);
+  try {
+    console.log(`✓ Native scanner N-API addon available (${nativeAddonPath()})`);
+  } catch {
+    console.log("✗ Native scanner N-API addon missing (capture requires it)");
+  }
 }
