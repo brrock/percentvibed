@@ -105,8 +105,7 @@ For each new platform package:
 
 ## Release process
 
-1. Update package versions consistently.
-2. Run local validation:
+1. Make sure the working tree is clean, then run local validation:
 
    ```bash
    bun run --cwd packages/cli typecheck
@@ -114,15 +113,16 @@ For each new platform package:
    bun run test
    ```
 
-3. Commit changes.
-4. Tag the release:
+2. Bump package versions consistently from the latest semver git tag, then commit, tag, and push the release:
 
    ```bash
-   git tag 0.1.0
-   git push origin 0.1.0
+   just bump
+   # or: just bump patch|minor|major
    ```
 
-5. The GitHub workflow builds, packs, smoke tests, uploads tarballs, and publishes with provenance.
+   The bump command updates workspace package versions, internal workspace dependency versions, and `bun.lock`, creates a `chore: release x.y.z` commit, creates the `x.y.z` tag, pushes the current branch, and pushes the tag.
+
+3. The GitHub workflow builds, packs, smoke tests, uploads tarballs, and publishes with provenance.
 
 ## Notes
 

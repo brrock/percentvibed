@@ -150,36 +150,6 @@ jobs:
           PERCENTVIBED_SCANNER_NATIVE: ${{ github.workspace }}/packages/scanner-linux-x64/percentvibed_scanner.node
         run: bun run test
 
-      - name: Commit package versions
-        shell: bash
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-
-          git add \
-            bun.lock \
-            packages/cli/package.json \
-            packages/scanner/package.json \
-            packages/scanner-darwin-arm64/package.json \
-            packages/scanner-linux-x64/package.json
-
-          if git diff --cached --quiet; then
-            echo "Package versions are already up to date."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "versioon pkgs"
-
-          target_branch="${GITHUB_REF_NAME}"
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            target_branch="${DEFAULT_BRANCH}"
-          fi
-
-          git push origin "HEAD:refs/heads/${target_branch}"
-
       - name: Pack packages
         shell: bash
         run: |
