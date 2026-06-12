@@ -1,8 +1,9 @@
+import { existsSync } from "node:fs";
 import { repoRoot } from "../git/repo";
 export async function hook(args: string[]) {
   if (args[0] !== "pre-push") throw new Error("unknown hook");
   const root = repoRoot();
-  if (!(await Bun.file(`${root}/.percentvibed`).exists())) return;
+  if (!existsSync(`${root}/.percentvibed`)) return;
   if (process.env.PERCENTVIBED_MANAGED_PUSH === "1")
     console.error("PercentVibed: managed push detected.");
   else

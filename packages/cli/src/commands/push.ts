@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { currentBranch, git, repoRoot } from "../git/repo";
 import { setSkip, trackedPercentFiles } from "../git/skip-worktree";
 import { clean } from "./clean";
@@ -30,7 +31,7 @@ export async function push(args: string[]): Promise<void> {
     process.exit(result.code);
   }
 
-  if (!pushingDirectlyToMain && (await Bun.file(`${root}/.percentvibed`).exists())) {
+  if (!pushingDirectlyToMain && existsSync(`${root}/.percentvibed`)) {
     await clean(["--hide"]);
   }
 }

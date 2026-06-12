@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { nativeAddonPath } from "@percentvibed/scanner";
 import { hasHook } from "../git/hooks";
 import { repoRoot } from "../git/repo";
@@ -26,7 +27,7 @@ export async function doctor(): Promise<void> {
     },
     {
       name: ".percentvibed bundle exists",
-      ok: Bun.file(`${root}/.percentvibed`).exists(),
+      ok: existsSync(`${root}/.percentvibed`),
       fix: "run percentvibed capture",
     },
     {
