@@ -1,6 +1,6 @@
 {
   "name": "@percentvibed/scanner-win32-arm64",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "PercentVibed native scanner N-API addon for win32 arm64",
   "repository": {
     "type": "git",
