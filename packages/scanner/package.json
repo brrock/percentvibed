@@ -1,6 +1,6 @@
 {
   "name": "@percentvibed/scanner",
-  "version": "0.0.6",
+  "version": "0.2.1",
   "type": "module",
   "repository": {
     "type": "git",
@@ -13,7 +13,7 @@
   },
   "files": ["src"],
   "optionalDependencies": {
-    "@percentvibed/scanner-darwin-arm64": "0.0.6",
-    "@percentvibed/scanner-linux-x64": "0.0.6"
+    "@percentvibed/scanner-darwin-arm64": "0.2.1",
+    "@percentvibed/scanner-linux-x64": "0.2.1"
   }
 }
