@@ -102,7 +102,7 @@ bump part="":
   bun install --lockfile-only
 
   git add package.json packages/*/package.json bun.lock
-  git commit -m "chore: release $next"
+  git commit -m "chore: release $next [skip ci]"
   git tag "$next"
   git push
   git push origin "$next"
