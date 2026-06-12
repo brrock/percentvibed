@@ -1,6 +1,6 @@
 {
   "name": "@percentvibed/scanner-linux-x64",
-  "version": "0.1.0",
+  "version": "0.0.6",
   "description": "PercentVibed native scanner N-API addon for linux x64",
   "repository": {
     "type": "git",
