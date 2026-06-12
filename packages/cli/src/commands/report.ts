@@ -37,7 +37,8 @@ export async function report(args: string[]): Promise<void> {
   const base = valueAfter(args, "--base") ?? inferBaseRef();
 
   const prStats = diffNumstat(root, base);
-  const captured = await readCapturedSummary(root, base, prStats.files.map((file) => file.file));
+  const rawCaptured = await readCapturedSummary(root, base, prStats.files.map((file) => file.file));
+  const captured = boundCapturedToPrDiff(rawCaptured, prStats.files);
   const artifacts = renderReportArtifacts(prStats, captured);
 
   if (out) {
@@ -300,13 +301,51 @@ function addBoundedBundleStats(
   }
 }
 
+function boundCapturedToPrDiff(captured: CapturedSummary, prFiles: CapturedFile[]): CapturedSummary {
+  const prByFile = new Map(prFiles.map((file) => [file.file, file]));
+  const warnings = [...captured.warnings];
+  const files: CapturedFile[] = [];
+
+  for (const file of captured.files) {
+    const prFile = prByFile.get(file.file);
+    if (!prFile) continue;
+
+    const added = Math.min(file.added, prFile.added);
+    const deleted = Math.min(file.deleted, prFile.deleted);
+
+    if (added !== file.added || deleted !== file.deleted) {
+      warnings.push(
+        `Agent evidence for ${file.file} exceeded the final PR diff and was capped to the current PR file stats.`,
+      );
+    }
+
+    if (added > 0 || deleted > 0) {
+      files.push({ file: file.file, added, deleted });
+    }
+  }
+
+  return {
+    ...captured,
+    added: files.reduce((sum, file) => sum + file.added, 0),
+    deleted: files.reduce((sum, file) => sum + file.deleted, 0),
+    files,
+    warnings,
+  };
+}
+
 function renderReportArtifacts(prStats: ReturnType<typeof diffNumstat>, captured: CapturedSummary): ReportArtifacts {
-  const percent = prStats.added > 0 ? Math.min(100, Math.round((captured.added / prStats.added) * 100)) : 0;
+  const percent = percentOfChangedLines(captured.added + captured.deleted, prStats.added + prStats.deleted);
   const badgeMarkdown = renderBadge(percent);
   const prBodyBlock = `${BODY_MARKER_START}\n${badgeMarkdown}\n${BODY_MARKER_END}`;
   const commentMarkdown = renderCommentMarkdown(prStats, captured, percent);
 
   return { percent, badgeMarkdown, prBodyBlock, commentMarkdown };
+}
+
+function percentOfChangedLines(agentLines: number, prLines: number): number {
+  if (prLines <= 0) return 0;
+  if (agentLines >= prLines) return 100;
+  return Math.floor((agentLines / prLines) * 100);
 }
 
 function renderBadge(percent: number): string {
@@ -323,7 +362,7 @@ function renderCommentMarkdown(
 
   lines.push(`${COMMENT_MARKER}\n`);
   lines.push("## PercentVibed report\n");
-  lines.push(`**Detected agent-assisted share:** ${percent}%\n`);
+  lines.push(`**Detected agent-assisted share:** ${percent}% of changed lines\n`);
   lines.push("| Metric | Value |");
   lines.push("|---|---:|");
   lines.push(`| PR added lines | ${prStats.added} |`);
